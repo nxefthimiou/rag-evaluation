@@ -1,8 +1,11 @@
 """
 rag-eval.py
 
-Preprocess data to build a synthetic dataset for use in RAG evaluation.
+Preprocess knowledge base data to build a synthetic dataset for use in RAG evaluation.
 """
+
+# TODO:
+# Change typehints to comments
 
 import os
 import hashlib
@@ -55,13 +58,37 @@ def download(url, folder='../data', sha1_hash=None):
 	with open(fname, 'wb') as f:
 		f.write(r.content)
 	return fname
-			
+
+
 def read_dataset(url):
     fname = download(url)
     return datasets.load_dataset("csv", data_files=fname,
                                  streaming=True)
 
 
+def preprocess(
+	dataset,				# datasets.Dataset
+	chunk_size,				# int
+	chunk_overlap=None,		# int = None
+	batch_size=32,			# int = 32
+):							# Iterable[LangchainDocument]
+	if chunk_overlap is None:
+		chunk_overlap = int(chunk_size / 10)
+	
+	text_splitter = RecursiveCharacterTextSplitter(
+		chunk_size=chunk_size,
+		chunk_overlap=int(chunk_size / 10),
+		add_start_index=True,
+		separators=["\n\n", "\n", ".", " ", ""],
+	)
+
+	for batch in dataset.iter(batch_size):
+		for text, source in zip(batch["text"], batch["source"]):
+			doc = LangchainDocument(page_content=text, metadata={"source": source})
+			docs = text_splitter.split_text([doc])
+			for doc in docs:
+				yield doc
+			
 def data_iter_fn(
 	dataset,				# datasets.IterableDataset
 	batch_size: int = 32,	# int = 32
@@ -76,7 +103,7 @@ def split_iter_fn(
 	doc_iter,				# List[LangchainDocument], 
 	chunk_size,				# int
 	chunk_overlap, 			# int = None
-	batch_size=32,			# int = 32
+#	batch_size=32,			# int = 32
 ):							# -> Iterable[LangchainDocument]
 	"""Generate and return splits of Langchain documents."""
 	
@@ -93,13 +120,13 @@ def split_iter_fn(
 	for doc in doc_iter:
 		docs = text_splitter.split_documents([doc])
 		for doc in docs:
-			yield LangchainDocument(page_content=doc.page_content, metadata=doc.metadata)
+			yield doc
 
 
 def get_llm_client(
-    llm_model: str,
-    timeout: Optional[int] = 120,
-) -> InferenceClient:
+    llm_model,						# str
+    timeout = 120,					# Optional[int] = 120
+):									# -> InferenceClient
     llm_client = InferenceClient(
 		model=llm_model,
 		timeout=timeout,
@@ -107,23 +134,23 @@ def get_llm_client(
     return llm_client
 
 def get_qa_generation_llm(
-    qa_llm_name: str,
-) -> InferenceClient:
+    qa_llm_name,					# str
+):									# -> InferenceClient
     """Setup QA generation agent."""
     return get_llm_client(config.QA_LLM_MODEL[qa_llm_name])
 
 def get_critique_llm(
-    critique_llm_name: str, 
-) -> InferenceClient:
+    critique_llm_name,				# str 
+):									# -> InferenceClient
 	"""Setup critique agent."""
 	return get_llm_client(config.CRITIQUE_LLM_MODEL[critique_llm_name])
 
 
 def llm_completion(
-	llm_client: InferenceClient,
-	prompt: str,
-	params: Dict = {"max_new_tokens": 1000},
-) -> str:
+	llm_client,						# InferenceClient
+	prompt,							# str
+	params,							# Dict = {"max_new_tokens": 1000},
+):									# -> str
 	response = llm_client.post(
 		json={
 			"inputs": prompt,
@@ -135,54 +162,59 @@ def llm_completion(
 
 
 def generate_qa_couples(
-	doc_iter: List[LangchainDocument],
-	qa_agent: InferenceClient,
-	n_generations: int = 10,
-	max_answer_len: int = 300,
-) -> List[Dict]:
-	"""Generate QA couples on a given context."""
+	doc_iter,							# Iterable[LangchainDocument]
+	qa_agent,							# InferenceClient | Llama
+	qa_generation_prompt,				# str
+	n_generations,						# int = 10
+	max_answer_len,						# int = 300
+):										# -> Iterable[Dict]:
+	"""Generate QA couples on a LangchainDocument iterator."""
 	
 	print("Generating {n_generations} QA couples...")
 	
-	qa_records = []
-	for doc in random.sample(docs_processed, n_generations):
+	if n_generations > 0:
+		doc_iter = random.sample(doc_iter, n_generations)
+	
+	for doc in doc_iter:
 		# generate QA couple
 		response = llm_completion(qa_agent,
-			prompts.QA_generation.format(context=doc.page_content))
+			qa_generation_prompt.format(context=doc.page_content))
 		try:
 			question = response.split("Factoid question: ")[-1].split("Answer: ")[0]
 			answer = response.split("Answer: ")[-1] 
 			assert len(answer) < max_answer_len, "Answer is too long"
 			# yield rec
-			qa_records.append(
-				{
-					"context": doc.page_content,
-					"question": question,
-					"answer": answer,
-					"source_doc": doc.metadata["source"],
-				}
-			)
+			qa_dict = {
+				"context": doc.page_content,
+				"question": question,
+				"answer": answer,
+				"source_doc": doc.metadata["source"],
+			}
+			yield qa_dict	
 		except:
 			continue
-	return qa_records
 
 
 def generate_critique(
-	qa_records: List[Dict],
-	critique_agent: InferenceClient,
-) -> None:
+	qa_iter,									# Iterable[Dict]
+	critique_agent,								# InferenceClient
+	critique_config,							# Dict[criterion, prompt]
+	question_groundedness_critique_prompt,		# str
+	question_relevance_critique_prompt,			# str
+	question_standalone_critique_prompt,		# sstr
+):												# -> Iterable[Dict]
 	"""Generate critique for QA couples. Modifies in place QA couples records."""
 	print("Generating critique for each QA couple...")
 	
-	for rec in tqdm(qa_records):
+	for rec in qa_iter:
 		evaluations = {
 			"groundedness": llm_completion(critique_agent,
-				prompts.question_groundedness_critique.format(context=rec["context"],
+				question_groundedness_critique_prompt.format(context=rec["context"],
 					question=rec["question"])),
 			"standalone": llm_completion(critique_agent,
-				prompts.question_standalone_critique.format(question=rec["question"])),
+				question_standalone_critique_prompt.format(question=rec["question"])),
 			"relevance": llm_completion(critique_agent,
-				prompts.question_relevance_critique.format(question=rec["question"])),
+				question_relevance_critique_prompt.format(question=rec["question"])),
 		}
 		try:
 			for criterion, evaluation in evaluations:
@@ -196,6 +228,7 @@ def generate_critique(
 						f"{criterion}_eval": eval,
 					}
 				)
+				yield rec
 		except Exception as e:
 			continue
 
@@ -233,3 +266,13 @@ if __name__ == '__main__':
 
 	dataset = read_dataset('mric')
 	
+	chunk_size, chunk_overlap, batch_size = 1000, 100, 256
+	chunk_iter = preprocess(dataset, chunk_size, chunk_overlap, batch_size)
+	
+	# qa_agent = get_model(...)
+	qa_iter = generate_qa_couples(chunk_iter, qa_agent, prompts.QA_generation)
+
+	# critique_agent = get_model(...)
+	qa_dict = generate_critique(qa_iter, critique_agent, prompts.question_groundedness_critique,
+				prompts.question_relevance_critique_prompt, prompts.question_standalone_critique)
+): 		
