@@ -21,6 +21,12 @@ llm = LLama(
 	...
 )
 """
+QA_AGENT = (
+    "C:/Users/efthimiou/AppData/Roaming/Jan/data/models/huggingface.co/TheBloke/",	# model_hub
+    "zephyr-7B-beta-GGUF",		# model_name
+    "zephyr-7b-beta.Q2_K.gguf",		# model_file
+)
+
 QA_CRITIQUE = {
     "groundedness": prompts.question_groundedness_critique,
     "relevance": prompts.question_relevance_critique,
