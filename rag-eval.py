@@ -63,7 +63,7 @@ def download(url, folder='../data', sha1_hash=None):
 def read_dataset(url):
     fname = download(url)
     return datasets.load_dataset("csv", data_files=fname,
-                                 streaming=True)
+                                 split="train", streaming=True)
 
 
 def preprocess(
@@ -85,7 +85,7 @@ def preprocess(
 	for batch in dataset.iter(batch_size):
 		for text, source in zip(batch["text"], batch["source"]):
 			doc = LangchainDocument(page_content=text, metadata={"source": source})
-			docs = text_splitter.split_text([doc])
+			docs = text_splitter.split_documents([doc])
 			for doc in docs:
 				yield doc
 			
