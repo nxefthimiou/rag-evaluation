@@ -4,11 +4,11 @@ from pathlib import Path
 from llama_cpp import Llama
 
 def get_model(
-    model_hub: str,
-    model_name: str,
-    model_file: str,
-    n_ctx: int = 16000,
-) -> Llama:
+    model_hub,        # str
+    model_name,        # str
+    model_file,        # str
+    n_ctx=16000,        # int = 16000
+):                    # -> Llama
     model_path = str(Path(model_hub, model_name, model_file))
 
     llm = Llama(
@@ -33,8 +33,6 @@ def llm_completion(
     #     "top_k": 1,
     # }
 
-    # Run inference
-    #prompt = "What a Kalman filter is?"
     resp = llm(prompt, **generation_kwargs)  # res is a dictionary
     return resp["choices"][0]["text"]
 
