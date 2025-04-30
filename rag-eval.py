@@ -268,8 +268,9 @@ if __name__ == '__main__':
 	
 	chunk_size, chunk_overlap, batch_size = 1000, 100, 256
 	chunk_iter = preprocess(dataset, chunk_size, chunk_overlap, batch_size)
-	
-	# qa_agent = get_model(...)
+
+	model_hub, model_name, model_file = config.QA_AGENT
+	qa_agent = get_model(model_hub, model_name, model_file)
 	qa_iter = generate_qa_couples(chunk_iter, qa_agent, prompts.QA_generation)
 
 	# critique_agent = get_model(...)
