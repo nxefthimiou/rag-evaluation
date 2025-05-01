@@ -41,7 +41,7 @@ def download(url, folder='../data', sha1_hash=None):
 		url, sha1_hash = DATA_HUB[url]
 	os.makedirs(folder, exist_ok=True)
 	fname = os.path.join(folder, url.split('/')[-1])
-	# Check if hit cache
+	#--- Check if hit cache
 	if os.path.exists(fname) and sha1_hash:
 		sha1 = hashlib.sha1()
 		with open(fname, 'rb') as f:
@@ -52,7 +52,7 @@ def download(url, folder='../data', sha1_hash=None):
 				sha1.update(data)
 		if sha1.hexdigest() == sha1_hash:
 			return fname
-	# Download
+	#--- Download
 	print("Downloading {fname} from {url}...")
 	r = requests.get(url, stream=True, verify=True)
 	with open(fname, 'wb') as f:
@@ -63,7 +63,7 @@ def download(url, folder='../data', sha1_hash=None):
 def read_dataset(url):
     fname = download(url)
     return datasets.load_dataset("csv", data_files=fname,
-                                 split="train", streaming=True)
+                                 streaming=True)
 
 
 def preprocess(
@@ -71,7 +71,7 @@ def preprocess(
 	chunk_size,				# int
 	chunk_overlap=None,		# int = None
 	batch_size=32,			# int = 32
-):							# Iterable[LangchainDocument]
+):							# -> Iterable[LangchainDocument]
 	if chunk_overlap is None:
 		chunk_overlap = int(chunk_size / 10)
 	
@@ -85,7 +85,7 @@ def preprocess(
 	for batch in dataset.iter(batch_size):
 		for text, source in zip(batch["text"], batch["source"]):
 			doc = LangchainDocument(page_content=text, metadata={"source": source})
-			docs = text_splitter.split_documents([doc])
+			docs = text_splitter.split_text([doc])
 			for doc in docs:
 				yield doc
 			
@@ -176,7 +176,7 @@ def generate_qa_couples(
 		doc_iter = random.sample(doc_iter, n_generations)
 	
 	for doc in doc_iter:
-		# generate QA couple
+		#--- generate QA couple
 		response = llm_completion(qa_agent,
 			qa_generation_prompt.format(context=doc.page_content))
 		try:
@@ -268,12 +268,10 @@ if __name__ == '__main__':
 	
 	chunk_size, chunk_overlap, batch_size = 1000, 100, 256
 	chunk_iter = preprocess(dataset, chunk_size, chunk_overlap, batch_size)
-
-	model_hub, model_name, model_file = config.QA_AGENT
-	qa_agent = get_model(model_hub, model_name, model_file)
+	
+	# qa_agent = get_model(...)
 	qa_iter = generate_qa_couples(chunk_iter, qa_agent, prompts.QA_generation)
 
 	# critique_agent = get_model(...)
 	qa_dict = generate_critique(qa_iter, critique_agent, prompts.question_groundedness_critique,
 				prompts.question_relevance_critique_prompt, prompts.question_standalone_critique)
-): 		

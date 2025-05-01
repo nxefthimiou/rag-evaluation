@@ -1,3 +1,9 @@
+"""
+prompts.py
+
+Contains the prompts to be used
+"""
+
 QA_generation = """
 Your task is to write a factoid question and answer given a context.
 Your factoid question should be answerable with a specific, concise piece of factual

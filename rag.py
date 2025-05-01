@@ -28,6 +28,8 @@ from langchain.schema import SystemMessage
 from langchain.chat_models import ChatOpenAI
 from langchain_community.llms import HuggingFaceHub
 
+from langchain_core.language_models.chat_models import BaseChatModel
+
 from transformers import AutoTokenizer
 
 from ragatouille import RAGPretrainedModel

@@ -21,12 +21,32 @@ llm = LLama(
 	...
 )
 """
+
 QA_AGENT = (
-    "C:/Users/efthimiou/AppData/Roaming/Jan/data/models/huggingface.co/TheBloke/",	# model_hub
-    "zephyr-7B-beta-GGUF",		# model_name
-    "zephyr-7b-beta.Q2_K.gguf",		# model_file
+    "C:/Users/efthimiou/AppData/Roaming/Jan/data/models/huggingface.co/TheBloke/",	# model_hub 
+	"zephyr-7B-beta-GGUF",							# model_name 
+    "zephyr-7b-beta.Q2_K.gguf",						# model_file
 )
 
+QA_CRITIQUE = {
+    "groundedness": prompts.question_groundedness_critique,
+    "relevance": prompts.question_relevance_critique,
+    "standalone": prompts.question_standalone_critique,
+}
+
+QA_LLM_NAME = "Mixtral-8x7B-v0.1"
+
+QA_LLM_MODEL = {
+    "Mixtral-8x7B-v0.1": "mistralai/Mixtral-8x7B-v0.1"
+}
+
+CRITIQUE_LLM_NAME = "Mixtral-8x7B-v0.1"
+
+CRITIQUE_LLM_MODEL = {
+    "Mixtral-8x7B-v0.1": "mistralai/Mixtral-8x7B-v0.1"
+}
+
+JUDGE_LLM_NAME = "GPT4"
 QA_CRITIQUE = {
     "groundedness": prompts.question_groundedness_critique,
     "relevance": prompts.question_relevance_critique,

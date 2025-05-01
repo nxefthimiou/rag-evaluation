@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from llama_cpp import Llama
 
+import prompts
+
 def get_model(
     model_hub,        # str
     model_name,        # str
@@ -42,9 +44,9 @@ if __name__ == "__main__":
     # `model_hub` is the "root" directory where all model files live
     # `model_name` is the name of the model
     # `model_file` is the name of the model file
-    model_hub = "C:/Users/efthimiou/AppData/Roaming/Jan/data/models/huggingface.co/TheBloke/"
-    model_name = "zephyr-7B-beta-GGUF"
-    model_file = "zephyr-7b-beta.Q2_K.gguf"
+    model_hub = "/home/nikolaos/.config/Jan/data/models/huggingface.co/TheBloke"
+    model_name = "Llama-2-7B-Chat-GGUF"
+    model_file = "llama-2-7b-chat.Q2_K.gguf"
     
     llm = get_model(model_hub, model_name, model_file)
 
@@ -55,11 +57,24 @@ if __name__ == "__main__":
         "echo": False,
         "top_k": 40,
         "top_p": 0.95,
-        "temperature": 0.7,
+        "temperature": 0.1,
     }
 
-    # Run inference
-    prompt = "What is the capital of Greece?"
+    #--- Run inference
+    context = """
+    Nikolaos E. was born in Trygona, a small village in a mountain area of Central Greece.
+    His father was Charalambos who died on 2007 and his mother was Maria who died on Marh, 2024.
+    """
+    question = "Where was Nikolaos E. born?"
+    # answer = "Nikolaos E. was born in Trygona, a small village in a mountain area of Central Greece."
+
+    prompt = prompts.question_groundedness_critique.format(context=context, question=question) 
+    #--- prompt = "What a Kalman filter is?"
     res = llm_completion(llm, prompt, generation_kwargs)
     print(res)
-
+    
+    #--- RAG
+    print("answering question with RAG...")
+    prompt = prompts.RAG_PROMPT_TEMPLATE.format(context=context, question=question)
+    resp = llm_completion(llm, prompt, generation_kwargs)
+    print(resp)
