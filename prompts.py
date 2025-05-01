@@ -1,7 +1,7 @@
 """
 prompts.py
 
-Contains the prompts to be used
+Contains the prompts to be used in the current experiments
 """
 
 QA_generation = """
